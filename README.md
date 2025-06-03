@@ -1,5 +1,5 @@
 ## Status
-Looking for maintainer
+Archived
 
 ## Aery
 A plugin that adds a subset of Entity Relationship features to Bevy.
