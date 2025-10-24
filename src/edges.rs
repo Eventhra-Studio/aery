@@ -15,6 +15,8 @@ use bevy_ecs::{
 use bevy_hierarchy::{Children, Parent};
 use bevy_log::warn;
 use bevy_reflect::{utility::GenericTypePathCell, Reflect, TypePath};
+#[cfg(feature = "serde")]
+use bevy_reflect::{ReflectDeserialize, ReflectSerialize};
 
 use crate::relation::{CleanupPolicy, Relation, ZstOrPanic};
 
@@ -109,6 +111,7 @@ pub(crate) fn clean_recursive<R: Relation>(mut world: DeferredWorld, id: Entity,
 
 #[derive(Deref, DerefMut, Reflect)]
 #[reflect(Component, MapEntities, type_path = false, where R: Relation)]
+#[cfg_attr(feature = "serde", reflect(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Hosts<R: Relation> {
     #[deref]
@@ -169,6 +172,7 @@ impl<R: Relation> Component for Hosts<R> {
 
 #[derive(Deref, DerefMut, Reflect)]
 #[reflect(Component, MapEntities, type_path = false, where R: Relation)]
+#[cfg_attr(feature = "serde", reflect(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Targets<R: Relation> {
     #[deref]
