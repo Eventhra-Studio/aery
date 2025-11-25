@@ -20,6 +20,7 @@ use crate::relation::{CleanupPolicy, Relation, ZstOrPanic};
 
 // Small Stable Unique Vec
 #[derive(Reflect)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct SSUVec<T: PartialEq> {
     pub vec: SmallVec<[T; 1]>,
 }
