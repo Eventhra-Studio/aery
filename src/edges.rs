@@ -308,6 +308,37 @@ pub fn edge_storage_type_ids<R: Relation>() -> [std::any::TypeId; 2] {
     ]
 }
 
+/// Returns the hosts of an entity for a given relation, if any.
+pub fn hosts<R: Relation>(world: &World, entity: Entity) -> Option<&[Entity]> {
+    world
+        .get::<Hosts<R>>(entity)
+        .map(|h| h.vec.vec.as_slice())
+}
+
+/// Returns the targets of an entity for a given relation, if any.
+pub fn targets<R: Relation>(world: &World, entity: Entity) -> Option<&[Entity]> {
+    world
+        .get::<Targets<R>>(entity)
+        .map(|t| t.vec.vec.as_slice())
+}
+
+/// Check if an entity has any edges (hosts or targets) for a given relation.
+pub fn has_edges<R: Relation>(world: &World, entity: Entity) -> bool {
+    world.get::<Hosts<R>>(entity).is_some() || world.get::<Targets<R>>(entity).is_some()
+}
+
+/// Check if an entity is a root (has hosts but no targets) for a relation.
+pub fn is_root<R: Relation>(world: &World, entity: Entity) -> bool {
+    world.get::<Hosts<R>>(entity).is_some() && world.get::<Targets<R>>(entity).is_none()
+}
+
+/// Check if a host entity is targeting a specific target entity.
+pub fn is_targeting<R: Relation>(world: &World, host: Entity, target: Entity) -> bool {
+    world
+        .get::<Targets<R>>(host)
+        .map_or(false, |t| t.vec.vec.contains(&target))
+}
+
 /// Filter to find roots of a relationship graph.
 /// An entity is a root of `R` if:
 /// - It is targeted by atleast one other entity via `R`.
