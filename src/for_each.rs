@@ -5,7 +5,7 @@ use crate::tuple_traits::*;
 
 use bevy_ecs::{
     entity::Entity,
-    query::{QueryData, QueryFilter, WorldQuery},
+    query::{QueryData, QueryFilter},
     system::Query,
 };
 
@@ -293,7 +293,7 @@ where
     Starts: IntoIterator<Item = E>,
     for<'i> RelationsItem<'i, RS>: RelationEntries,
 {
-    type WQ<'wq> = <D::ReadOnly as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D::ReadOnly as QueryData>::Item<'wq>;
 
     fn for_each<Func, Ret>(self, mut func: Func)
     where
@@ -338,7 +338,7 @@ where
     Starts: IntoIterator<Item = E>,
     for<'i> RelationsItem<'i, RS>: RelationEntries,
 {
-    type WQ<'wq> = <D as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D as QueryData>::Item<'wq>;
 
     fn for_each<Func, Ret>(self, mut func: Func)
     where
@@ -400,7 +400,7 @@ where
     for<'i> RelationsItem<'i, RS>: RelationEntries,
     Tracked: for<'a> Trackable<'a, N>,
 {
-    type WQ<'wq> = <D::ReadOnly as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D::ReadOnly as QueryData>::Item<'wq>;
     type Tracked<'t> = <Tracked as Trackable<'t, N>>::Out;
 
     fn for_each<Func, Ret>(mut self, mut func: Func)
@@ -453,7 +453,7 @@ where
     for<'i> RelationsItem<'i, RS>: RelationEntries,
     Tracked: for<'a> Trackable<'a, N>,
 {
-    type WQ<'wq> = <D as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D as QueryData>::Item<'wq>;
     type Tracked<'t> = <Tracked as Trackable<'t, N>>::Out;
 
     fn for_each<Func, Ret>(mut self, mut func: Func)
@@ -524,7 +524,7 @@ where
     Starts: IntoIterator<Item = E>,
     for<'i> RelationsItem<'i, RS>: RelationEntries,
 {
-    type WQ<'wq> = <D::ReadOnly as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D::ReadOnly as QueryData>::Item<'wq>;
 
     fn for_each<Func, Ret>(self, mut func: Func)
     where
@@ -582,7 +582,7 @@ where
     Starts: IntoIterator<Item = E>,
     for<'i> RelationsItem<'i, RS>: RelationEntries,
 {
-    type WQ<'wq> = <D as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D as QueryData>::Item<'wq>;
 
     fn for_each<Func, Ret>(self, mut func: Func)
     where
@@ -672,14 +672,14 @@ where
     E: Borrow<Entity>,
     Starts: IntoIterator<Item = E>,
     for<'i> RelationsItem<'i, RS>: RelationEntries,
-    Init: for<'a> FnMut(&mut <D::ReadOnly as WorldQuery>::Item<'a>, &RelationsItem<'a, RS>) -> Acc,
+    Init: for<'a> FnMut(&mut <D::ReadOnly as QueryData>::Item<'a>, &RelationsItem<'a, RS>) -> Acc,
     Fold: for<'a> FnMut(
         Acc,
-        &mut <D::ReadOnly as WorldQuery>::Item<'a>,
+        &mut <D::ReadOnly as QueryData>::Item<'a>,
         &RelationsItem<'a, RS>,
     ) -> Result<Acc, Err>,
 {
-    type WQ<'wq> = <D::ReadOnly as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D::ReadOnly as QueryData>::Item<'wq>;
     type Res = Result<Acc, Err>;
 
     fn for_each<Func, Ret>(mut self, mut func: Func)
@@ -767,14 +767,14 @@ where
     E: Borrow<Entity>,
     Starts: IntoIterator<Item = E>,
     for<'i> RelationsItem<'i, RS>: RelationEntries,
-    Init: for<'a> FnMut(&mut <D as WorldQuery>::Item<'a>, &RelationsItem<'a, RS>) -> Acc,
+    Init: for<'a> FnMut(&mut <D as QueryData>::Item<'a>, &RelationsItem<'a, RS>) -> Acc,
     Fold: for<'a> FnMut(
         Acc,
-        &mut <D as WorldQuery>::Item<'a>,
+        &mut <D as QueryData>::Item<'a>,
         &RelationsItem<'a, RS>,
     ) -> Result<Acc, Err>,
 {
-    type WQ<'wq> = <D as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D as QueryData>::Item<'wq>;
     type Res = Result<Acc, Err>;
 
     fn for_each<Func, Ret>(mut self, mut func: Func)

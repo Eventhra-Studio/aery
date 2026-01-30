@@ -232,7 +232,7 @@ pub trait Relation: 'static + Sized + Send + Sync {
 /// fn sys(
 ///     a_query: Query<&A>,
 ///     b_query: Query<(&B, Relations<(Hierarchy, R)>)>, // Can use alone or along side relations
-///     roots: Query<Entity, (With<Children>, Without<Parent>)>
+///     roots: Query<Entity, (With<Children>, Without<ChildOf>)>
 /// ) {
 ///     b_query.traverse::<Hierarchy>(roots.iter()).for_each(|b, edges| {
 ///         edges.join::<R>(&a_query).for_each(|a| {

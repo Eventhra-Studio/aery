@@ -4,15 +4,15 @@ use smallvec::SmallVec;
 
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::{
-    component::{Component, ComponentHooks, ComponentId, StorageType},
+    component::{Component, ComponentHook, HookContext, Mutable, StorageType},
     entity::{Entity, EntityMapper, MapEntities},
     event::Event,
     query::{AnyOf, Changed, Or, QueryData, QueryFilter, With, Without},
     reflect::{ReflectComponent, ReflectMapEntities},
-    system::EntityCommands,
-    world::{Command, DeferredWorld, EntityWorldMut, World},
+    system::{Command, EntityCommands},
+    world::{DeferredWorld, EntityWorldMut, World},
 };
-use bevy_hierarchy::{Children, Parent};
+use bevy_ecs::hierarchy::{Children, ChildOf};
 use bevy_log::warn;
 use bevy_reflect::{utility::GenericTypePathCell, Reflect, TypePath};
 #[cfg(feature = "serde")]
@@ -60,15 +60,12 @@ impl<T: PartialEq> SSUVec<T> {
 // For cleanup types:
 // - Orphan
 // - Counted
-pub(crate) fn unset_edges<R: Relation>(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+// Hook for when Hosts<R> is removed - only clean up hosts side
+pub(crate) fn unset_hosts_edges<R: Relation>(mut world: DeferredWorld, ctx: HookContext) {
+    let id = ctx.entity;
     let hosts = world
         .get_mut::<Hosts<R>>(id)
         .map(|mut hosts| std::mem::take(&mut hosts.vec.vec))
-        .unwrap_or_default();
-
-    let targets = world
-        .get_mut::<Targets<R>>(id)
-        .map(|mut targets| std::mem::take(&mut targets.vec.vec))
         .unwrap_or_default();
 
     let mut cmds = world.commands();
@@ -76,23 +73,28 @@ pub(crate) fn unset_edges<R: Relation>(mut world: DeferredWorld, id: Entity, _: 
     for host in hosts.iter().copied() {
         cmds.queue(UnsetAsymmetric::<R>::buffered(host, id));
     }
+}
+
+// Hook for when Targets<R> is removed - only clean up targets side
+pub(crate) fn unset_targets_edges<R: Relation>(mut world: DeferredWorld, ctx: HookContext) {
+    let id = ctx.entity;
+    let targets = world
+        .get_mut::<Targets<R>>(id)
+        .map(|mut targets| std::mem::take(&mut targets.vec.vec))
+        .unwrap_or_default();
+
+    let mut cmds = world.commands();
 
     for target in targets.iter().copied() {
         cmds.queue(UnsetAsymmetric::<R>::buffered(id, target));
     }
 }
 
-// For cleanup types:
-// - Recrusive
-// - Total
-pub(crate) fn clean_recursive<R: Relation>(mut world: DeferredWorld, id: Entity, _: ComponentId) {
+// For cleanup types (Recursive/Total) - hook for when Hosts<R> is removed
+pub(crate) fn clean_recursive_hosts<R: Relation>(mut world: DeferredWorld, ctx: HookContext) {
+    let id = ctx.entity;
     let hosts = world
         .get_mut::<Hosts<R>>(id)
-        .map(|mut edges| std::mem::take(&mut edges.vec.vec))
-        .unwrap_or_default();
-
-    let targets = world
-        .get_mut::<Targets<R>>(id)
         .map(|mut edges| std::mem::take(&mut edges.vec.vec))
         .unwrap_or_default();
 
@@ -103,6 +105,17 @@ pub(crate) fn clean_recursive<R: Relation>(mut world: DeferredWorld, id: Entity,
             world.despawn(host);
         });
     }
+}
+
+// For cleanup types (Recursive/Total) - hook for when Targets<R> is removed
+pub(crate) fn clean_recursive_targets<R: Relation>(mut world: DeferredWorld, ctx: HookContext) {
+    let id = ctx.entity;
+    let targets = world
+        .get_mut::<Targets<R>>(id)
+        .map(|mut edges| std::mem::take(&mut edges.vec.vec))
+        .unwrap_or_default();
+
+    let mut cmds = world.commands();
 
     for target in targets.iter().copied() {
         cmds.queue(UnsetAsymmetric::<R>::buffered(id, target));
@@ -124,7 +137,7 @@ pub(crate) struct Hosts<R: Relation> {
 impl<R: Relation> MapEntities for Hosts<R> {
     fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
         for entity in self.vec.vec.iter_mut() {
-            *entity = entity_mapper.map_entity(*entity);
+            *entity = entity_mapper.get_mapped(*entity);
         }
     }
 }
@@ -162,11 +175,13 @@ impl<R: Relation> Default for Hosts<R> {
 
 impl<R: Relation> Component for Hosts<R> {
     const STORAGE_TYPE: StorageType = StorageType::Table;
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_remove(match R::CLEANUP_POLICY {
-            CleanupPolicy::Orphan | CleanupPolicy::Counted => unset_edges::<R>,
-            CleanupPolicy::Recursive | CleanupPolicy::Total => clean_recursive::<R>,
-        });
+    type Mutability = Mutable;
+
+    fn on_remove() -> Option<ComponentHook> {
+        Some(match R::CLEANUP_POLICY {
+            CleanupPolicy::Orphan | CleanupPolicy::Counted => unset_hosts_edges::<R>,
+            CleanupPolicy::Recursive | CleanupPolicy::Total => clean_recursive_hosts::<R>,
+        })
     }
 }
 
@@ -185,7 +200,7 @@ pub(crate) struct Targets<R: Relation> {
 impl<R: Relation> MapEntities for Targets<R> {
     fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
         for entity in self.vec.vec.iter_mut() {
-            *entity = entity_mapper.map_entity(*entity);
+            *entity = entity_mapper.get_mapped(*entity);
         }
     }
 }
@@ -223,11 +238,13 @@ impl<R: Relation> Default for Targets<R> {
 
 impl<R: Relation> Component for Targets<R> {
     const STORAGE_TYPE: StorageType = StorageType::Table;
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_remove(match R::CLEANUP_POLICY {
-            CleanupPolicy::Orphan | CleanupPolicy::Counted => unset_edges::<R>,
-            CleanupPolicy::Recursive | CleanupPolicy::Total => clean_recursive::<R>,
-        });
+    type Mutability = Mutable;
+
+    fn on_remove() -> Option<ComponentHook> {
+        Some(match R::CLEANUP_POLICY {
+            CleanupPolicy::Orphan | CleanupPolicy::Counted => unset_targets_edges::<R>,
+            CleanupPolicy::Recursive | CleanupPolicy::Total => clean_recursive_targets::<R>,
+        })
     }
 }
 
@@ -236,7 +253,7 @@ pub type EdgeIter<'a> = std::iter::Copied<std::slice::Iter<'a, Entity>>;
 
 /// Edges world query for hierarchy compatibility
 #[derive(QueryData)]
-pub struct HierarchyEdges(pub(crate) AnyOf<(&'static Children, &'static Parent)>);
+pub struct HierarchyEdges(pub(crate) AnyOf<(&'static Children, &'static ChildOf)>);
 
 /// World query to get the edge info of a Relation.
 #[derive(QueryData)]
@@ -253,14 +270,14 @@ pub trait EdgeInfo {
 impl EdgeInfo for HierarchyEdgesItem<'_> {
     fn hosts(&self) -> &[Entity] {
         match self {
-            Self((Some(hosts), _)) => hosts,
+            Self((Some(children), _)) => children,
             _ => &[],
         }
     }
 
     fn targets(&self) -> &[Entity] {
         match self {
-            Self((_, Some(target))) => target.as_slice(),
+            Self((_, Some(child_of))) => core::slice::from_ref(&child_of.0),
             _ => &[],
         }
     }
@@ -1413,7 +1430,7 @@ mod tests {
             .spawn(EventCounter(0))
             .observe(
                 |trigger: Trigger<UnsetEvent<R>>, mut counters: Query<&mut EventCounter>| {
-                    counters.get_mut(trigger.entity()).unwrap().0 += 1;
+                    counters.get_mut(trigger.target()).unwrap().0 += 1;
                 },
             )
             .id();
@@ -1422,7 +1439,7 @@ mod tests {
             .spawn(EventCounter(0))
             .observe(
                 |trigger: Trigger<UnsetEvent<R>>, mut counters: Query<&mut EventCounter>| {
-                    counters.get_mut(trigger.entity()).unwrap().0 += 1;
+                    counters.get_mut(trigger.target()).unwrap().0 += 1;
                 },
             )
             .id();
@@ -1468,11 +1485,12 @@ mod tests {
         world.register_relation::<PolySymmetricRelation>();
 
         // Test cases: (RelationType, set_both_ways, expected counters after unset)
+        // Symmetric relations fire events for both forward and reverse unset calls
         let test_cases = vec![
             (RelationType::Asymmetric, false, 1, 0),
-            (RelationType::Symmetric, false, 1, 1),
+            (RelationType::Symmetric, false, 2, 2),
             (RelationType::Poly, true, 1, 1),
-            (RelationType::PolySymmetric, true, 1, 1),
+            (RelationType::PolySymmetric, true, 1, 2),
         ];
 
         for (relation_type, set_both_ways, expected_a, expected_b) in test_cases {
@@ -1520,7 +1538,7 @@ mod tests {
             .spawn(EventCounter(0))
             .observe(
                 |trigger: Trigger<SetEvent<R>>, mut counters: Query<&mut EventCounter>| {
-                    counters.get_mut(trigger.entity()).unwrap().0 += 1;
+                    counters.get_mut(trigger.target()).unwrap().0 += 1;
                 },
             )
             .id();
@@ -1529,7 +1547,7 @@ mod tests {
             .spawn(EventCounter(0))
             .observe(
                 |trigger: Trigger<SetEvent<R>>, mut counters: Query<&mut EventCounter>| {
-                    counters.get_mut(trigger.entity()).unwrap().0 += 1;
+                    counters.get_mut(trigger.target()).unwrap().0 += 1;
                 },
             )
             .id();

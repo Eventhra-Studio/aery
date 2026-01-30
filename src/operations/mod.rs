@@ -2,7 +2,7 @@ use crate::{relation::ZstOrPanic, tuple_traits::*};
 
 use bevy_ecs::{
     entity::Entity,
-    query::{QueryData, QueryFilter, WorldQuery},
+    query::{QueryData, QueryFilter},
     system::Query,
 };
 
@@ -314,7 +314,7 @@ where
     F: QueryFilter,
     RS: RelationSet,
 {
-    type WQ<'wq> = <D::ReadOnly as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D::ReadOnly as QueryData>::Item<'wq>;
     type Out<Init, Fold> = TraverseAnd<
         &'a Query<'w, 's, (D, Relations<RS>), F>,
         Edge,
@@ -347,7 +347,7 @@ where
     F: QueryFilter,
     RS: RelationSet,
 {
-    type WQ<'wq> = <D as WorldQuery>::Item<'wq>;
+    type WQ<'wq> = <D as QueryData>::Item<'wq>;
     type Out<Init, Fold> = TraverseAnd<
         &'a mut Query<'w, 's, (D, Relations<RS>), F>,
         Edge,
@@ -652,7 +652,7 @@ mod tests {
             assert_eq!(2, c.get(c1).unwrap().0);
             assert_eq!(0, c.get(c2).unwrap().0);
 
-            exit.send(AppExit::Success);
+            exit.write(AppExit::Success);
         }
 
         App::new()
@@ -732,7 +732,7 @@ mod tests {
             assert_eq!(0, c.get(c1).unwrap().0);
             assert_eq!(2, c.get(c2).unwrap().0);
 
-            exit.send(AppExit::Success);
+            exit.write(AppExit::Success);
         }
 
         App::new()
@@ -809,7 +809,7 @@ mod tests {
             assert_eq!(1, b.get(b2).unwrap().0);
             assert_eq!(2, c.get(c1).unwrap().0);
 
-            exit.send(AppExit::Success);
+            exit.write(AppExit::Success);
         }
 
         App::new()
@@ -887,7 +887,7 @@ mod tests {
             assert_eq!(2, c.get(c0).unwrap().0);
             assert_eq!(2, c.get(c2).unwrap().0);
 
-            exit.send(AppExit::Success);
+            exit.write(AppExit::Success);
         }
 
         App::new()

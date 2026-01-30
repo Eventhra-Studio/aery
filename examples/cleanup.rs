@@ -45,8 +45,8 @@ fn input(
     nodes: Query<(Entity, &Pos)>,
 ) {
     let Some(cursor_pos) = windows
-        .get_single()
-        .ok()
+        .iter()
+        .next()
         .and_then(Window::cursor_position)
         .filter(|_| mouse_buttons.just_pressed(MouseButton::Left))
         .map(|pos| pos - WIN_SIZE / 2.)

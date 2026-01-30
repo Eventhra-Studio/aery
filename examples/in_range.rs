@@ -101,7 +101,7 @@ fn unset_relations(
 
 fn relation_set(set: Trigger<SetEvent<InRange>>, names: Query<&Name>) {
     // Do something when a new "InRange" relationship is established.
-    let first = set.entity();
+    let first = set.target();
     let second = set.event().target;
     let first_name = names.get(first).unwrap();
     let second_name = names.get(second).unwrap();
@@ -116,7 +116,7 @@ fn relation_set(set: Trigger<SetEvent<InRange>>, names: Query<&Name>) {
 
 fn relation_remove(unset: Trigger<UnsetEvent<InRange>>, names: Query<&Name>) {
     // Do something when an "InRange" relationship is removed.
-    let first = unset.entity();
+    let first = unset.target();
     let second = unset.event().target;
     let first_name = names.get(first).unwrap();
     let second_name = names.get(second).unwrap();

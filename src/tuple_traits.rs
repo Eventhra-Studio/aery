@@ -7,10 +7,10 @@ use core::any::TypeId;
 
 use bevy_ecs::{
     entity::Entity,
-    query::{QueryData, QueryFilter, ReadOnlyQueryData, WorldQuery},
+    query::{QueryData, QueryFilter, ReadOnlyQueryData},
     system::Query,
 };
-use bevy_utils::all_tuples;
+use variadics_please::all_tuples;
 
 mod sealed {
     use super::*;
@@ -174,7 +174,7 @@ macro_rules! impl_relation_entries {
     ($(($P:ident, $e:ident)),*) => {
         impl<$($P: RelationSet),*> RelationEntries for RelationsItem<'_, ($($P,)*)>
         where
-            $(for<'a> <$P::Edges as WorldQuery>::Item<'a>: EdgeInfo,)*
+            $(for<'a> <$P::Edges as QueryData>::Item<'a>: EdgeInfo,)*
         {
             fn hosts(&self, id: impl Into<RelationId>) -> &[Entity] {
                 let id = id.into();
@@ -242,7 +242,7 @@ where
     D: QueryData,
     F: QueryFilter,
 {
-    type Out = <D::ReadOnly as WorldQuery>::Item<'a>;
+    type Out = <D::ReadOnly as QueryData>::Item<'a>;
 
     fn check(items: &Self, [e0]: [Entity; 1]) -> [bool; 1] {
         [items.contains(e0)]
@@ -258,7 +258,7 @@ where
     D: QueryData,
     F: QueryFilter,
 {
-    type Out = <D as WorldQuery>::Item<'a>;
+    type Out = <D as QueryData>::Item<'a>;
 
     fn check(items: &Self, [e0]: [Entity; 1]) -> [bool; 1] {
         [items.contains(e0)]
@@ -329,7 +329,7 @@ where
     D: QueryData,
     F: QueryFilter,
 {
-    type Out = <D::ReadOnly as WorldQuery>::Item<'a>;
+    type Out = <D::ReadOnly as QueryData>::Item<'a>;
 
     fn update(items: &Self, entity: Entity, [fallback]: [Entity; 1]) -> [Entity; 1] {
         [if items.contains(entity) {
@@ -349,7 +349,7 @@ where
     D: QueryData,
     F: QueryFilter,
 {
-    type Out = <D as WorldQuery>::Item<'a>;
+    type Out = <D as QueryData>::Item<'a>;
 
     fn update(items: &Self, entity: Entity, [fallback]: [Entity; 1]) -> [Entity; 1] {
         [if items.contains(entity) {
